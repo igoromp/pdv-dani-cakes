@@ -8,7 +8,9 @@
     "dev": "node scripts/dev.js",
     "build": "electron-vite build",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "test": "node scripts/test.js run",
+    "test:watch": "node scripts/test.js watch"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3"
@@ -28,7 +30,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.0"
   },
   "build": {
     "appId": "com.danicakes.pdv",
@@ -40,7 +43,10 @@
       "icon": "build/icon.png"
     },
     "extraResources": [
-      { "from": "build/icon.png", "to": "icon.png" }
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      }
     ]
   }
 }
