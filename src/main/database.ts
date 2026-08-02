@@ -37,7 +37,26 @@ export function getDbPath(): string {
   return path.join(app.getPath('userData'), 'pdv.db')
 }
 
-export function initDb() {
+// Sem 0/O/1/l/I: evita confusão de quem for digitar a senha à mão a partir do
+// diálogo mostrado uma única vez no primeiro uso.
+const PASSWORD_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+
+function generateRandomPassword(length = 10): string {
+  const bytes = crypto.randomBytes(length)
+  let out = ''
+  for (let i = 0; i < length; i++) {
+    out += PASSWORD_CHARS[bytes[i] % PASSWORD_CHARS.length]
+  }
+  return out
+}
+
+export interface SeedResult {
+  // Presente só quando o banco acabou de ser criado agora: é a única vez que a
+  // senha existe em texto puro, pra quem chamou initDb() poder mostrá-la.
+  adminCredentials?: { username: string; password: string }
+}
+
+export function initDb(): SeedResult {
   db = new Database(getDbPath())
   // DELETE (padrão) em vez de WAL: mantém o .db principal sempre consistente e
   // legível por ferramentas externas (DBeaver etc.) sem depender de checkpoint.
@@ -226,10 +245,16 @@ export function initDb() {
   }
 
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }
+  let adminCredentials: { username: string; password: string } | undefined
   if (userCount.count === 0) {
     const adminRole = createRole({ name: 'Admin', permissions: [...ALL_RESOURCE_KEYS], is_system: true })
-    createUser({ username: '0001', password: '102030', role_id: adminRole.id as number })
+    const username = '0001'
+    const password = generateRandomPassword()
+    createUser({ username, password, role_id: adminRole.id as number })
+    adminCredentials = { username, password }
   }
+
+  return { adminCredentials }
 }
 
 export function getAllProducts() {

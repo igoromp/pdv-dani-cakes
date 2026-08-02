@@ -1,8 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import * as db from '../../src/main/database'
 
+let seededAdminPassword: string
+
 beforeAll(() => {
-  db.initDb()
+  const { adminCredentials } = db.initDb()
+  seededAdminPassword = adminCredentials!.password
 })
 
 afterAll(() => {
@@ -10,13 +13,20 @@ afterAll(() => {
 })
 
 describe('inicialização', () => {
-  it('semeia categorias padrão e um usuário Admin', () => {
+  it('semeia categorias padrão e um usuário Admin com senha aleatória', () => {
     const categories = db.getAllCategories() as Array<{ name: string }>
     expect(categories.map(c => c.name)).toContain('Bolos')
 
     const admin = db.getUserByUsername('0001')
     expect(admin).toBeDefined()
-    expect(db.verifyPassword('102030', admin!.password_hash, admin!.password_salt)).toBe(true)
+    expect(seededAdminPassword).toHaveLength(10)
+    expect(db.verifyPassword(seededAdminPassword, admin!.password_hash, admin!.password_salt)).toBe(true)
+    expect(db.verifyPassword('102030', admin!.password_hash, admin!.password_salt)).toBe(false)
+  })
+
+  it('não gera credenciais numa segunda chamada de initDb (banco já semeado)', () => {
+    const result = db.initDb()
+    expect(result.adminCredentials).toBeUndefined()
   })
 })
 
