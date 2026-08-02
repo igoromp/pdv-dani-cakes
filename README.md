@@ -69,10 +69,8 @@ src/
   renderer/src/ # app React (pages/, components/, types.ts)
 ```
 
-O banco fica em `app.getPath('userData')/pdv.db` (fora do repositório). No primeiro uso, um usuário Admin é criado automaticamente (usuário `0001`, senha `102030` — troque assim que possível em Usuários → Minha conta).
+O banco fica em `app.getPath('userData')/pdv.db` (fora do repositório).
 
-## Login padrão
+## Primeiro acesso
 
-| Usuário | Senha  |
-|---------|--------|
-| 0001    | 102030 |
+No primeiro uso (banco vazio), o app cria o usuário Admin `0001` com uma **senha aleatória gerada na hora** e mostra um diálogo único com usuário e senha — anote nesse momento, pois ela não é salva em texto puro em lugar nenhum nem é exibida de novo. Se perder, troque-a em Usuários → Minha conta enquanto ainda estiver logado, ou peça pra alguém com acesso Admin.

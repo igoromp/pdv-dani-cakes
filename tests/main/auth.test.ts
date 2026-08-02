@@ -2,8 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import * as db from '../../src/main/database'
 import * as auth from '../../src/main/auth'
 
+let adminPassword: string
+
 beforeAll(() => {
-  db.initDb()
+  const { adminCredentials } = db.initDb()
+  adminPassword = adminCredentials!.password
 })
 
 afterAll(() => {
@@ -14,7 +17,7 @@ describe('login/logout', () => {
   it('autentica o Admin semeado e recusa senha errada', () => {
     expect(() => auth.login('0001', 'senha-errada')).toThrow(/inválidos/)
 
-    const user = auth.login('0001', '102030')
+    const user = auth.login('0001', adminPassword)
     expect(user?.username).toBe('0001')
     expect(user?.role.is_system).toBeTruthy()
     expect(auth.getCurrentUser()?.username).toBe('0001')
@@ -39,7 +42,7 @@ describe('controle de acesso', () => {
   it('requireCurrentUser exige sessão ativa', () => {
     auth.logout()
     expect(() => auth.requireCurrentUser()).toThrow(/Sessão expirada/)
-    auth.login('0001', '102030')
+    auth.login('0001', adminPassword)
     expect(auth.requireCurrentUser().username).toBe('0001')
   })
 
@@ -54,7 +57,7 @@ describe('controle de acesso', () => {
     auth.login(created.username, '123456')
     expect(() => auth.requireAdmin()).toThrow(/Admin/)
 
-    auth.login('0001', '102030')
+    auth.login('0001', adminPassword)
     expect(() => auth.requireAdmin()).not.toThrow()
   })
 })

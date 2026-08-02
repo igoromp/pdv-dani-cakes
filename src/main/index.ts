@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron'
 import { join } from 'path'
 import * as db from './database'
 import * as auth from './auth'
@@ -83,7 +83,7 @@ function checkAppointmentReminders() {
 }
 
 app.whenReady().then(async () => {
-  db.initDb()
+  const { adminCredentials } = db.initDb()
   try {
     await backup.createAutoBackupIfNeeded()
   } catch (err) {
@@ -246,6 +246,21 @@ app.whenReady().then(async () => {
   ipcMain.handle('backup:open-folder', () => { auth.requireAdmin(); backup.openBackupsFolder() })
 
   createWindow()
+
+  if (adminCredentials) {
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Primeiro acesso',
+      message: 'Usuário Admin criado',
+      detail:
+        `Usuário: ${adminCredentials.username}\n` +
+        `Senha: ${adminCredentials.password}\n\n` +
+        'Anote essa senha agora — ela não será mostrada de novo. Troque-a assim ' +
+        'que possível em Usuários → Minha conta.',
+      buttons: ['Entendi']
+    })
+  }
+
   checkAppointmentReminders()
   setInterval(checkAppointmentReminders, 60 * 1000)
 
