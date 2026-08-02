@@ -95,5 +95,14 @@ contextBridge.exposeInMainWorld('api', {
     create: () => ipcRenderer.invoke('backup:create'),
     restore: () => ipcRenderer.invoke('backup:restore'),
     openFolder: () => ipcRenderer.invoke('backup:open-folder')
+  },
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    onStatus: (callback: (status: unknown) => void) => {
+      const listener = (_: unknown, status: unknown) => callback(status)
+      ipcRenderer.on('updater:status', listener)
+      return () => ipcRenderer.removeListener('updater:status', listener)
+    }
   }
 })
