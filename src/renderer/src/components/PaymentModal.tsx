@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PaymentMethod, PAYMENT_LABELS } from '../types'
 import { BanknoteIcon, CloseIcon, CreditCardIcon, SmartphoneIcon } from './icons'
 
@@ -34,15 +34,25 @@ export default function PaymentModal({ total, error, onConfirm, onCancel }: Prop
   const [amountInput, setAmountInput] = useState('')
   const [receivedInput, setReceivedInput] = useState('')
 
+  const [pointEnabled, setPointEnabled] = useState(false)
+  const [charging, setCharging] = useState(false)
+  const [pointError, setPointError] = useState('')
+
+  // Se a consulta falhar, o recurso fica desligado: um erro aqui não pode
+  // impedir de registrar a venda pelo fluxo manual de sempre.
+  useEffect(() => {
+    window.api.point.enabled().then(setPointEnabled).catch(() => setPointEnabled(false))
+  }, [])
+
   const paid = lines.reduce((sum, l) => sum + l.amount, 0)
   const remaining = Math.max(0, Math.round((total - paid) * 100) / 100)
 
   const parsedAmount = amountInput ? parseFloat(amountInput.replace(',', '.')) || 0 : remaining
   const parsedReceived = parseFloat(receivedInput.replace(',', '.')) || 0
 
-  const addLine = () => {
-    const amount = Math.min(parsedAmount, remaining)
-    if (amount <= 0) return
+  const chargesOnPoint = pointEnabled && method === 'card'
+
+  const pushLine = (amount: number) => {
     const line: PaymentLine = { method, amount }
     if (method === 'cash' && parsedReceived > amount) {
       line.received = parsedReceived
@@ -50,6 +60,35 @@ export default function PaymentModal({ total, error, onConfirm, onCancel }: Prop
     setLines(prev => [...prev, line])
     setAmountInput('')
     setReceivedInput('')
+  }
+
+  const addLine = async () => {
+    const amount = Math.min(parsedAmount, remaining)
+    if (amount <= 0) return
+
+    if (!chargesOnPoint) {
+      pushLine(amount)
+      return
+    }
+
+    setPointError('')
+    setCharging(true)
+    try {
+      const { orderId } = await window.api.point.charge({ amount })
+      const outcome = await window.api.point.awaitResult(orderId)
+
+      if (outcome.result === 'approved') {
+        pushLine(amount)
+      } else if (outcome.result === 'refused') {
+        setPointError('Pagamento não aprovado na maquininha. Tente novamente ou use outra forma.')
+      } else {
+        setPointError('A maquininha não respondeu a tempo. Confira nela antes de tentar de novo.')
+      }
+    } catch (err) {
+      setPointError(err instanceof Error ? err.message : 'Falha ao falar com a maquininha.')
+    } finally {
+      setCharging(false)
+    }
   }
 
   const removeLine = (index: number) => {
@@ -162,12 +201,35 @@ export default function PaymentModal({ total, error, onConfirm, onCancel }: Prop
                 </div>
               )}
 
+              {chargesOnPoint && !charging && (
+                <p className="text-xs text-gray-500 -mt-1">
+                  O valor será enviado para a maquininha e a venda só é registrada após a aprovação.
+                </p>
+              )}
+
               <button
                 onClick={addLine}
-                className="w-full py-2.5 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium text-sm cursor-pointer"
+                disabled={charging}
+                className="w-full py-2.5 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                + Adicionar {PAYMENT_LABELS[method]}
+                {charging
+                  ? 'Aguardando a maquininha...'
+                  : chargesOnPoint
+                    ? `Cobrar ${fmt(Math.min(parsedAmount, remaining))} na maquininha`
+                    : `+ Adicionar ${PAYMENT_LABELS[method]}`}
               </button>
+
+              {charging && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                  Peça para o cliente passar o cartão na maquininha. Não feche esta janela.
+                </div>
+              )}
+
+              {pointError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {pointError}
+                </div>
+              )}
             </>
           )}
 
@@ -187,13 +249,14 @@ export default function PaymentModal({ total, error, onConfirm, onCancel }: Prop
           <div className="flex gap-3 pt-2">
             <button
               onClick={onCancel}
-              className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 cursor-pointer"
+              disabled={charging}
+              className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               Cancelar
             </button>
             <button
               onClick={() => onConfirm(lines)}
-              disabled={!canConfirm}
+              disabled={!canConfirm || charging}
               className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-semibold hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               Confirmar

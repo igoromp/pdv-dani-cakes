@@ -4,6 +4,7 @@ import * as db from './database'
 import * as auth from './auth'
 import * as backup from './backup'
 import * as updater from './updater'
+import * as point from './pointPayment'
 
 const RENOTIFY_INTERVAL_MINUTES = 10
 const UNIT_TO_MINUTES: Record<string, number> = { minutes: 1, hours: 60, days: 1440 }
@@ -244,6 +245,34 @@ app.whenReady().then(async () => {
   ipcMain.handle('backup:create', () => { auth.requireAdmin(); return backup.exportBackup(mainWindow) })
   ipcMain.handle('backup:restore', () => { auth.requireAdmin(); return backup.restoreBackup(mainWindow) })
   ipcMain.handle('backup:open-folder', () => { auth.requireAdmin(); backup.openBackupsFolder() })
+
+  // Configurar a maquininha é do Admin; cobrar nela é de quem opera o caixa.
+  // O token de acesso ao servidor nunca volta para o renderer (ver
+  // getPublicPointConfig), por isso não há um handler que o leia.
+  ipcMain.handle('point:get-config', () => {
+    auth.requireAdmin()
+    return point.getPublicPointConfig()
+  })
+  ipcMain.handle('point:save-config', (_, data) => {
+    auth.requireAdmin()
+    return point.savePointConfig(data)
+  })
+  ipcMain.handle('point:test', () => {
+    auth.requireAdmin()
+    return point.testConnection()
+  })
+  ipcMain.handle('point:enabled', () => {
+    auth.requireCurrentUser()
+    return point.getPointConfig().enabled
+  })
+  ipcMain.handle('point:charge', (_, data) => {
+    auth.requireCurrentUser()
+    return point.charge(data)
+  })
+  ipcMain.handle('point:await-result', (_, orderId) => {
+    auth.requireCurrentUser()
+    return point.awaitResult(orderId)
+  })
 
   createWindow()
 

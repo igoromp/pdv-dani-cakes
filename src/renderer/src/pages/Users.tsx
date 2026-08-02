@@ -31,10 +31,18 @@ function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR')
 }
 
+const EMPTY_POINT_FORM = { enabled: false, webhookUrl: '', deviceId: '', apiToken: '' }
+
 export default function Users({ currentUser }: Props) {
-  const [tab, setTab] = useState<'users' | 'roles' | 'account' | 'backup'>('users')
+  const [tab, setTab] = useState<'users' | 'roles' | 'account' | 'backup' | 'point'>('users')
   const [users, setUsers] = useState<UserListItem[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+
+  const [pointForm, setPointForm] = useState(EMPTY_POINT_FORM)
+  const [pointHasToken, setPointHasToken] = useState(false)
+  const [pointBusy, setPointBusy] = useState(false)
+  const [pointMessage, setPointMessage] = useState('')
+  const [pointError, setPointError] = useState('')
 
   const [backups, setBackups] = useState<Array<{ name: string; size: number; created_at: string }>>([])
   const [backupBusy, setBackupBusy] = useState(false)
@@ -70,6 +78,66 @@ export default function Users({ currentUser }: Props) {
   useEffect(() => {
     if (tab === 'backup' && currentUser.role.is_system) loadBackups()
   }, [tab, currentUser.role.is_system])
+
+  useEffect(() => {
+    if (tab !== 'point' || !currentUser.role.is_system) return
+    window.api.point
+      .getConfig()
+      .then(config => {
+        // apiToken entra vazio de propósito: o token gravado nunca sai do main.
+        // Deixar em branco ao salvar mantém o que já está lá.
+        setPointForm({
+          enabled: config.enabled,
+          webhookUrl: config.webhookUrl,
+          deviceId: config.deviceId,
+          apiToken: ''
+        })
+        setPointHasToken(config.hasToken)
+      })
+      .catch(err => setPointError(err instanceof Error ? err.message : 'Erro ao carregar a configuração.'))
+  }, [tab, currentUser.role.is_system])
+
+  const handleSavePoint = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPointBusy(true)
+    setPointError('')
+    setPointMessage('')
+    try {
+      const saved = await window.api.point.saveConfig({
+        enabled: pointForm.enabled,
+        webhookUrl: pointForm.webhookUrl,
+        deviceId: pointForm.deviceId,
+        apiToken: pointForm.apiToken || undefined
+      })
+      setPointHasToken(saved.hasToken)
+      setPointForm(f => ({ ...f, apiToken: '' }))
+      setPointMessage(
+        saved.enabled
+          ? 'Configuração salva. A cobrança pela maquininha está ativa.'
+          : 'Configuração salva. A cobrança pela maquininha está desativada.'
+      )
+    } catch (err) {
+      setPointError(err instanceof Error ? err.message : 'Erro ao salvar a configuração.')
+    } finally {
+      setPointBusy(false)
+    }
+  }
+
+  // Testa o que já está gravado, não o que está na tela: evita um "conexão ok"
+  // enganoso com valores que ainda não foram salvos.
+  const handleTestPoint = async () => {
+    setPointBusy(true)
+    setPointError('')
+    setPointMessage('')
+    try {
+      await window.api.point.test()
+      setPointMessage('Conexão com o servidor funcionando.')
+    } catch (err) {
+      setPointError(err instanceof Error ? err.message : 'Falha ao conectar no servidor.')
+    } finally {
+      setPointBusy(false)
+    }
+  }
 
   const handleCreateBackup = async () => {
     setBackupBusy(true)
@@ -222,7 +290,7 @@ export default function Users({ currentUser }: Props) {
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center gap-2">
           <h1 className="text-xl font-bold text-gray-800 mr-4">Usuários</h1>
-          {(['users', 'roles', 'account', ...(currentUser.role.is_system ? (['backup'] as const) : [])] as const).map(t => (
+          {(['users', 'roles', 'account', ...(currentUser.role.is_system ? (['backup', 'point'] as const) : [])] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -230,7 +298,15 @@ export default function Users({ currentUser }: Props) {
               className={`px-4 py-2 min-h-[40px] rounded-full text-sm font-medium transition-colors cursor-pointer
                 ${tab === t ? 'bg-rose-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
-              {t === 'users' ? 'Usuários' : t === 'roles' ? 'Papéis' : t === 'account' ? 'Minha conta' : 'Backup'}
+              {t === 'users'
+                ? 'Usuários'
+                : t === 'roles'
+                  ? 'Papéis'
+                  : t === 'account'
+                    ? 'Minha conta'
+                    : t === 'backup'
+                      ? 'Backup'
+                      : 'Maquininha'}
             </button>
           ))}
           {tab === 'users' && (
@@ -407,6 +483,109 @@ export default function Users({ currentUser }: Props) {
                 )}
               </div>
             </div>
+          )}
+
+          {tab === 'point' && currentUser.role.is_system && (
+            <form onSubmit={handleSavePoint} className="max-w-2xl mx-auto mt-8 space-y-6 pb-8">
+              <div className="p-6 bg-white border border-gray-200 rounded-xl space-y-4">
+                <div>
+                  <h2 className="font-semibold text-gray-800">Cobrança pela maquininha</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Envia o valor da venda direto para a maquininha Mercado Pago Point, sem digitar
+                    à mão. Depende de internet e do servidor de integração publicado.
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-3 cursor-pointer min-h-[44px] p-3 rounded-lg bg-gray-50 hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={pointForm.enabled}
+                    onChange={e => setPointForm(f => ({ ...f, enabled: e.target.checked }))}
+                    className="w-5 h-5 rounded"
+                  />
+                  <span>
+                    <span className="text-sm font-medium text-gray-800 block">
+                      Ativar cobrança pela maquininha
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Desativado, o PDV segue funcionando normalmente: o cartão é registrado à mão,
+                      como sempre foi.
+                    </span>
+                  </span>
+                </label>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    URL do servidor de integração
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://webhook.seudominio.com.br"
+                    value={pointForm.webhookUrl}
+                    onChange={e => setPointForm(f => ({ ...f, webhookUrl: e.target.value }))}
+                    className="w-full px-3 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Endereço do projeto dani-cakes-webhook. Precisa ser https.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ID da maquininha (device_id)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="PAX_A910__SMARTPOS1234567890"
+                    value={pointForm.deviceId}
+                    onChange={e => setPointForm(f => ({ ...f, deviceId: e.target.value }))}
+                    className="w-full px-3 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    A maquininha precisa estar no modo PDV para aceitar cobranças pela integração.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Token de acesso ao servidor
+                  </label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={pointHasToken ? '•••••••• (deixe em branco para manter)' : 'Cole o token aqui'}
+                    value={pointForm.apiToken}
+                    onChange={e => setPointForm(f => ({ ...f, apiToken: e.target.value }))}
+                    className="w-full px-3 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    O mesmo valor de PDV_API_TOKEN configurado no servidor. Por segurança, ele nunca
+                    é exibido de volta aqui.
+                  </p>
+                </div>
+
+                {pointMessage && <p className="text-sm text-green-600">{pointMessage}</p>}
+                {pointError && <p className="text-sm text-red-600">{pointError}</p>}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleTestPoint}
+                    disabled={pointBusy}
+                    className="px-4 py-2.5 min-h-[44px] border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
+                  >
+                    Testar conexão
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pointBusy}
+                    className="px-4 py-2.5 min-h-[44px] bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
+                  >
+                    {pointBusy ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            </form>
           )}
         </div>
       </div>

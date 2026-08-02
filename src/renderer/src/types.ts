@@ -323,6 +323,19 @@ export const REMINDER_UNIT_LABELS: Record<ReminderUnit, string> = {
   days: 'Dias'
 }
 
+export interface PointConfig {
+  enabled: boolean
+  webhookUrl: string
+  deviceId: string
+  /** O token nunca chega ao renderer; só se já existe um gravado. */
+  hasToken: boolean
+}
+
+export type PointOutcome =
+  | { result: 'approved'; status: string }
+  | { result: 'refused'; status: string }
+  | { result: 'timeout' }
+
 export type UpdaterStatus =
   | { state: 'checking' }
   | { state: 'available'; version: string }
