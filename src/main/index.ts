@@ -3,6 +3,7 @@ import { join } from 'path'
 import * as db from './database'
 import * as auth from './auth'
 import * as backup from './backup'
+import * as updater from './updater'
 
 const RENOTIFY_INTERVAL_MINUTES = 10
 const UNIT_TO_MINUTES: Record<string, number> = { minutes: 1, hours: 60, days: 1440 }
@@ -41,6 +42,7 @@ function createWindow() {
   })
 
   mainWindow = win
+  updater.initAutoUpdater(win)
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'])

@@ -322,3 +322,11 @@ export const REMINDER_UNIT_LABELS: Record<ReminderUnit, string> = {
   hours: 'Horas',
   days: 'Dias'
 }
+
+export type UpdaterStatus =
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | { state: 'not-available' }
+  | { state: 'downloading'; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string }

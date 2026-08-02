@@ -10,6 +10,7 @@ import Users from './pages/Users'
 import Login from './pages/Login'
 import { CurrentUser, ResourceKey } from './types'
 import LogoMark from './components/LogoMark'
+import UpdateBanner from './components/UpdateBanner'
 import {
   CartIcon,
   PackageIcon,
@@ -71,11 +72,21 @@ export default function App() {
   }, [currentUser, loadPendingCount])
 
   if (currentUser === undefined) {
-    return <div className="h-screen bg-gray-50" />
+    return (
+      <>
+        <div className="h-screen bg-gray-50" />
+        <UpdateBanner />
+      </>
+    )
   }
 
   if (currentUser === null) {
-    return <Login onSuccess={user => { setCurrentUser(user); setPage(firstAllowedPage(user)) }} />
+    return (
+      <>
+        <Login onSuccess={user => { setCurrentUser(user); setPage(firstAllowedPage(user)) }} />
+        <UpdateBanner />
+      </>
+    )
   }
 
   const handleLogout = async () => {
@@ -87,6 +98,7 @@ export default function App() {
 
   return (
     <div className="flex flex-1 min-w-0 h-screen bg-gray-50">
+      <UpdateBanner />
       <nav className="w-20 bg-rose-700 flex flex-col items-center py-4 gap-2 shrink-0" aria-label="Navegação principal">
         <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center mb-4 shrink-0" aria-hidden="true">
           <LogoMark className="w-9 h-9" />

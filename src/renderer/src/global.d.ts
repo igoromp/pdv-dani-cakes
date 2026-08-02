@@ -21,7 +21,8 @@ import type {
   ExpenseStatus,
   FinanceBasis,
   FinanceSummary,
-  RecurringExpense
+  RecurringExpense,
+  UpdaterStatus
 } from './types'
 
 interface RecurringPayload {
@@ -197,6 +198,11 @@ declare global {
         create: () => Promise<string | null>
         restore: () => Promise<boolean>
         openFolder: () => Promise<void>
+      }
+      updater: {
+        check: () => Promise<void>
+        install: () => Promise<void>
+        onStatus: (callback: (status: UpdaterStatus) => void) => () => void
       }
     }
   }
