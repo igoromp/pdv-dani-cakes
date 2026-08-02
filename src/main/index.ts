@@ -9,6 +9,12 @@ const UNIT_TO_MINUTES: Record<string, number> = { minutes: 1, hours: 60, days: 1
 
 let mainWindow: BrowserWindow | null = null
 
+// Empacotado: build/icon.png vira resources/icon.png (ver "extraResources" no
+// package.json), já que a pasta build/ em si não entra no pacote final.
+const iconPath = app.isPackaged
+  ? join(process.resourcesPath, 'icon.png')
+  : join(__dirname, '../../build/icon.png')
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -16,6 +22,7 @@ function createWindow() {
     minWidth: 960,
     minHeight: 640,
     show: false,
+    icon: iconPath,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
