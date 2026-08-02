@@ -1,0 +1,43 @@
+{
+  "name": "pdv-dani-cakes",
+  "version": "1.0.0",
+  "description": "PDV - Dani Cakes",
+  "author": "Igor Oliveira",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "build": "electron-vite build",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.11.5",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "electron": "^29.4.6",
+    "electron-builder": "^24.9.1",
+    "electron-vite": "^2.0.0",
+    "postcss": "^8.4.33",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  },
+  "build": {
+    "appId": "com.danicakes.pdv",
+    "productName": "PDV Dani Cakes",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "icon": "build/icon.png"
+    }
+  }
+}
