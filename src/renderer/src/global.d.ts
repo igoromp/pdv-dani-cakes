@@ -22,7 +22,9 @@ import type {
   FinanceBasis,
   FinanceSummary,
   RecurringExpense,
-  UpdaterStatus
+  UpdaterStatus,
+  PointConfig,
+  PointOutcome
 } from './types'
 
 interface RecurringPayload {
@@ -198,6 +200,19 @@ declare global {
         create: () => Promise<string | null>
         restore: () => Promise<boolean>
         openFolder: () => Promise<void>
+      }
+      point: {
+        getConfig: () => Promise<PointConfig>
+        saveConfig: (data: {
+          enabled: boolean
+          webhookUrl: string
+          deviceId: string
+          apiToken?: string
+        }) => Promise<PointConfig>
+        test: () => Promise<{ ok: true }>
+        enabled: () => Promise<boolean>
+        charge: (data: { amount: number; externalReference?: string }) => Promise<{ orderId: string }>
+        awaitResult: (orderId: string) => Promise<PointOutcome>
       }
       updater: {
         check: () => Promise<void>

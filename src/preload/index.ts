@@ -96,6 +96,14 @@ contextBridge.exposeInMainWorld('api', {
     restore: () => ipcRenderer.invoke('backup:restore'),
     openFolder: () => ipcRenderer.invoke('backup:open-folder')
   },
+  point: {
+    getConfig: () => ipcRenderer.invoke('point:get-config'),
+    saveConfig: (data: unknown) => ipcRenderer.invoke('point:save-config', data),
+    test: () => ipcRenderer.invoke('point:test'),
+    enabled: () => ipcRenderer.invoke('point:enabled'),
+    charge: (data: unknown) => ipcRenderer.invoke('point:charge', data),
+    awaitResult: (orderId: string) => ipcRenderer.invoke('point:await-result', orderId)
+  },
   updater: {
     check: () => ipcRenderer.invoke('updater:check'),
     install: () => ipcRenderer.invoke('updater:install'),
